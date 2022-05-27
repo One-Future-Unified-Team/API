@@ -1,38 +1,155 @@
-<audio id="audio"></audio>
-    <div class="wrapper">
-        <div class="container">
-            <div class="status">
-                <p id="status"></p>
-            </div>
-            <div class="logo-music">
-                <svg width="110px" height="110px" viewBox="0 0 110 110" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
-                    <g id="icons8_music_1">
-                        <path d="M0 0L110 0L110 110L0 110L0 0Z" id="Background" fill="none" stroke="none" />
-                        <path d="M20.625 0C9.23413 0 0 9.23413 0 20.625C2.18551e-06 32.0159 9.23413 41.25 20.625 41.25C32.0159 41.25 41.25 32.0159 41.25 20.625C41.25 9.23413 32.0159 0 20.625 0L20.625 0Z" transform="translate(22.91541 55)" id="Shape" fill="#E91E63" stroke="none" />
-                        <path d="M0 0L0 61.875L9.16667 61.875L9.16667 18.3333L34.375 25.2083L34.375 9.16667L0 0Z" transform="translate(55 13.75)" id="Shape" fill="#E91E63" stroke="none" />
-                    </g>
-                 </svg>
-            </div>
-        <h1 style="color:red;text-align:center;">Audio Recorder</h1>
-            <div class="audio-controler">
-                <div id="playPauseBtn" class="button">
+const mediaStatus = document.getElementById('status');
+const audioElement = document.getElementById('audio');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const recordBtn = document.getElementById('recordbtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const timer = document.getElementById('timer')
 
-                </div>
-                <div class="btn-info">
-                    <p>Play/Pause</p>
-                </div>
-            </div>
-            <div class="record-controler">
-                <div id="recordbtn" class="button">
+// global init;
 
-                </div>
-                <div class="btn-info">
-                    <p>record</p>
-                </div>
-            </div>
+var mediaRecorder
 
-            <div class="downloader">
-                <div id="downloadBtn" class="button"></div>
-            </div>
-        </div>
-    </div>
+// array init of chunk data
+
+var blobArray = [];
+
+
+// event listner
+
+playPauseBtn.addEventListener('click', audioController);
+recordBtn.addEventListener('click', recordController);
+downloadBtn.addEventListener('click', downloadAudio);
+
+// initial function call
+accessMedia();
+
+
+// check has media or not
+function hasAudioDevice(){
+    if(navigator.mediaDevices){
+        return true
+    }
+    return false
+}
+
+function addAudioStream(){
+
+    const blob = blobStreamData();
+    if(blobArray){
+        const audioURL = window.URL.createObjectURL(blob);
+        audioElement.src = audioURL;
+
+    }
+}
+
+async function accessMedia(){
+    const constraints ={
+        audio: {
+            echoCancellation: false,
+            noiseSuppression: true,
+        }
+    }
+    if (hasAudioDevice) {
+        await navigator.mediaDevices.getUserMedia(constraints).then( stream =>{
+            activityStream(stream);
+        }).catch( err =>{
+            console.log(err);
+        })
+    }
+}
+
+// media recorder class & property init
+function activityStream(stream){
+
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = addDataToArray;
+
+}
+
+function recordController(){
+    if (mediaRecorder.state ==="recording") {
+        stopRecording();
+    }else {
+      startRecording();
+    }
+}
+
+function startRecording(){
+    mediaRecorder.start();
+    mediaStatus.innerHTML = mediaRecorder.state;
+    recordBtn.style.backgroundImage = `url('${window.location.href}img/stop.png')`;
+}
+
+function stopRecording(){
+    mediaRecorder.stop();
+    mediaStatus.innerHTML = mediaRecorder.state;
+    recordBtn.style.backgroundImage = `url('${window.location.href}img/record.png')`;
+    
+}
+
+
+
+// adding recording to array
+
+var addDataToArray = function(event){
+    
+    
+    if(event.data.size > 0){
+        blobArray.push(event.data);
+    }
+}
+
+
+// audio play pause control
+function audioController(){
+    
+    if(!audioElement.paused){
+        audioElement.pause();
+        
+    }else {
+        addAudioStream();
+      audioElement.play(10);
+    }
+}
+
+// audio callback on playing function
+audioElement.onplaying = function (e){
+    if (e) {
+        playPauseBtn.style.backgroundImage = `url('${window.location.href}img/pause.png')`;
+    }
+}
+
+// audio callback on pause function
+audioElement.onpause = function (e){
+    if (event) {
+        playPauseBtn.style.backgroundImage = `url(${window.location.href}img/playpause-btn.png)`;
+    }
+    
+}
+
+// returning blob data
+function blobStreamData(){
+    return new Blob(blobArray, {
+        type: 'audio/webm; codecs=opus'
+    })
+}
+
+// download audio in file 
+function downloadAudio(){
+    const blobStream = blobStreamData();
+
+    if (blobArray.length > 0) {
+        var url = URL.createObjectURL(blobStream);
+        var a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = "display: none";
+        a.href = url;
+        a.download = `audio-recorder${new Date()}.webm`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+    }else {
+      console.log('No Data');
+      
+    }
+}
